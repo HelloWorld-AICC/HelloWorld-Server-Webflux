@@ -2,8 +2,10 @@ package Helloworld.helloworld_webflux.service;
 
 import Helloworld.helloworld_webflux.converter.ChatMessageConverter;
 import Helloworld.helloworld_webflux.domain.ChatMessage;
+import Helloworld.helloworld_webflux.domain.Room;
 import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.repository.ChatMessageRepository;
+import Helloworld.helloworld_webflux.repository.RoomRepository;
 import Helloworld.helloworld_webflux.repository.TranslateLogRepository;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import Helloworld.helloworld_webflux.web.dto.GPTRequest;
@@ -23,6 +25,7 @@ import java.util.List;
 public class ChatServiceImpl implements ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final TranslateLogRepository translateLogRepository;
+    private final RoomRepository roomRepository;
 
     private final WebClient webClient;
 
@@ -87,7 +90,7 @@ public class ChatServiceImpl implements ChatService {
                 .bodyToMono(GPTResponse.class)
                 .map(response -> response.getChoices().get(0).getMessage().getContent());
     }
-    // 새로운 메서드: 한국어 번역된 대화 로그 저장
+
     @Override
     public Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content) {
         TranslateLog log = new TranslateLog();
@@ -98,7 +101,6 @@ public class ChatServiceImpl implements ChatService {
         return translateLogRepository.save(log);
     }
 
-    // 새로운 메서드: 번역 로그에서 최근 대화 조회
     @Override
     public Flux<TranslateLog> getRecentTranslatedMessages(String roomId) {
         return translateLogRepository.findTop10ByRoomIdOrderByTimeDesc(roomId);
@@ -112,5 +114,25 @@ public class ChatServiceImpl implements ChatService {
         }
         prompt.append("User: ").append(koreanQuestion);
         return Mono.just(prompt.toString());
+    }
+
+    @Override
+    public Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message) {
+        // 만약 roomId가 "new_chat"인 경우 새 방 생성
+        if ("new_chat".equals(roomId)) {
+            String title = message.length() > 20 ? message.substring(0, 17) + "..." : message;
+            Room room = new Room();
+            room.setUserId(userId);
+            room.setTitle(title);
+            room.setUpdatedAt(LocalDateTime.now());
+            return roomRepository.save(room);
+        } else {
+            // 기존 방 업데이트
+            return roomRepository.findByUserIdAndId(userId, roomId)
+                    .flatMap(existingRoom -> {
+                        existingRoom.setUpdatedAt(LocalDateTime.now());
+                        return roomRepository.save(existingRoom);
+                    });
+        }
     }
 }

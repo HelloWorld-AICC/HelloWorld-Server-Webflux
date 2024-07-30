@@ -32,27 +32,32 @@ public class ChatController {
                                     @RequestBody String question) {
         return userService.findLanguage(userId)
                 .flatMapMany(language -> chatService.translateToKorean(question)
-                        .flatMapMany(koreanQuestion -> chatService.getRecentTranslatedMessages(roomId)
-                                .collectList()
-                                .flatMapMany(recentMessages -> chatService.createPrompt(koreanQuestion, recentMessages)
-                                        .flatMapMany(prompt -> chatService.getChatbotResponse(prompt)
-                                                .flatMapMany(response -> {
-                                                    Mono<String> translatedResponse = chatService.translateFromKorean(response, language);
-                                                    return translatedResponse.flatMapMany(userResponse -> {
-                                                        chatService.saveTranslatedMessage(roomId, "user", koreanQuestion).subscribe();
-                                                        chatService.saveTranslatedMessage(roomId, "bot", response).subscribe();
-                                                        ChatMessageDTO userMessage = new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now());
-                                                        ChatMessageDTO botMessage = new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now());
-                                                        chatService.saveMessage(userMessage).subscribe();
-                                                        chatService.saveMessage(botMessage).subscribe();
+                        .flatMapMany(koreanQuestion -> chatService.createOrUpdateRoom(userId, roomId, question)
+                                .flatMapMany(room -> {
+                                    String updatedRoomId = room.getId();
+                                    return chatService.getRecentTranslatedMessages(updatedRoomId)
+                                            .collectList()
+                                            .flatMapMany(recentMessages -> chatService.createPrompt(koreanQuestion, recentMessages)
+                                                    .flatMapMany(prompt -> chatService.getChatbotResponse(prompt)
+                                                            .flatMapMany(response -> {
+                                                                Mono<String> translatedResponse = chatService.translateFromKorean(response, language);
+                                                                return translatedResponse.flatMapMany(userResponse -> {
+                                                                    chatService.saveTranslatedMessage(updatedRoomId, "user", koreanQuestion).subscribe();
+                                                                    chatService.saveTranslatedMessage(updatedRoomId, "bot", response).subscribe();
+                                                                    ChatMessageDTO userMessage = new ChatMessageDTO(null, updatedRoomId, "user", question, LocalDateTime.now());
+                                                                    ChatMessageDTO botMessage = new ChatMessageDTO(null, updatedRoomId, "bot", userResponse, LocalDateTime.now());
+                                                                    chatService.saveMessage(userMessage).subscribe();
+                                                                    chatService.saveMessage(botMessage).subscribe();
 
-                                                        return Flux.fromStream(userResponse.chars()
-                                                                .mapToObj(c -> String.valueOf((char) c)))
-                                                                .delayElements(Duration.ofMillis(50)); // 스트리밍 형식 & 순서 보장하기 위해 넣었음. 필요하면 더 줄여도 된다.
-                                                    });
-                                                })
-                                        )
-                                )
+                                                                    return Flux.fromStream(userResponse.chars()
+                                                                                    .mapToObj(c -> String.valueOf((char) c)))
+                                                                            .delayElements(Duration.ofMillis(50))
+                                                                            .concatWith(Flux.just("Room ID: " + updatedRoomId)); // 마지막에 Room ID 반환
+                                                                });
+                                                            })
+                                                    )
+                                            );
+                                })
                         )
                 );
     }

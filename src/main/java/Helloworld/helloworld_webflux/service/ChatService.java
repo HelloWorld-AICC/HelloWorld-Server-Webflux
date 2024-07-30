@@ -1,6 +1,7 @@
 package Helloworld.helloworld_webflux.service;
 
 import Helloworld.helloworld_webflux.domain.ChatMessage;
+import Helloworld.helloworld_webflux.domain.Room;
 import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import reactor.core.publisher.Flux;
@@ -17,6 +18,8 @@ public interface ChatService {
     Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content);
     Flux<TranslateLog> getRecentTranslatedMessages(String roomId);
     Mono<String> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages);
+    Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message);
 
 
-    }
+
+}
