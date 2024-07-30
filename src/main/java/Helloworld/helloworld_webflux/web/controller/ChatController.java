@@ -1,8 +1,8 @@
 package Helloworld.helloworld_webflux.web.controller;
 
-import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.service.ChatService;
 import Helloworld.helloworld_webflux.service.UserService;
+import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -12,7 +12,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,6 +59,16 @@ public class ChatController {
                                 })
                         )
                 );
+    }
+
+    @GetMapping("/recent-room")
+    public Flux<String> getRecentRoomAndLogs(@RequestHeader("user_id") Long userId) {
+        return chatService.findRecentRoomAndLogs(userId)
+                .flatMapMany(roomAndLogs -> {
+                    String roomId = roomAndLogs.getT1();
+                    Flux<ChatLogDTO> logs = roomAndLogs.getT2();
+                    return Flux.concat(Mono.just("Room ID: " + roomId +"\n"), logs.map(log ->"Sender: " + log.getSender() + " ,Content: " + log.getContent()+"\n"));
+                });
     }
 
 }

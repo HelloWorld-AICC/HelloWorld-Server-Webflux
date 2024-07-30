@@ -3,9 +3,11 @@ package Helloworld.helloworld_webflux.service;
 import Helloworld.helloworld_webflux.domain.ChatMessage;
 import Helloworld.helloworld_webflux.domain.Room;
 import Helloworld.helloworld_webflux.domain.TranslateLog;
+import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 import java.util.List;
 
@@ -19,6 +21,7 @@ public interface ChatService {
     Flux<TranslateLog> getRecentTranslatedMessages(String roomId);
     Mono<String> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages);
     Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message);
+    Mono<Tuple2<String, Flux<ChatLogDTO>>> findRecentRoomAndLogs(Long userId);
 
 
 
