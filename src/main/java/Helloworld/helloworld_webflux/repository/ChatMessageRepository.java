@@ -6,4 +6,6 @@ import reactor.core.publisher.Flux;
 
 public interface ChatMessageRepository extends ReactiveMongoRepository<ChatMessage,String> {
     Flux<ChatMessage> findTop10ByRoomIdOrderByTimeDesc(String roomId);
+    Flux<ChatMessage> findByRoomIdOrderByTimeAsc(String roomId);
+
 }

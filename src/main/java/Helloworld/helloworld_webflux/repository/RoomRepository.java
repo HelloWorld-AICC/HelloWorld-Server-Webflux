@@ -6,4 +6,6 @@ import reactor.core.publisher.Mono;
 
 public interface RoomRepository extends ReactiveMongoRepository<Room,String> {
     Mono<Room> findByUserIdAndId(Long userId,String roomId);
+    Mono<Room> findTopByUserIdOrderByUpdatedAtDesc(Long userId);
+
 }

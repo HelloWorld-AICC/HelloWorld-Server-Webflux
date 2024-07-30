@@ -7,6 +7,7 @@ import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.repository.ChatMessageRepository;
 import Helloworld.helloworld_webflux.repository.RoomRepository;
 import Helloworld.helloworld_webflux.repository.TranslateLogRepository;
+import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import Helloworld.helloworld_webflux.web.dto.GPTRequest;
 import Helloworld.helloworld_webflux.web.dto.GPTResponse;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -134,5 +137,16 @@ public class ChatServiceImpl implements ChatService {
                         return roomRepository.save(existingRoom);
                     });
         }
+    }
+
+    @Override
+    public Mono<Tuple2<String, Flux<ChatLogDTO>>> findRecentRoomAndLogs(Long userId) {
+        return roomRepository.findTopByUserIdOrderByUpdatedAtDesc(userId)
+                .flatMap(room -> {
+                    String roomId = room.getId();
+                    Flux<ChatLogDTO> chatLogs = chatMessageRepository.findByRoomIdOrderByTimeAsc(roomId)
+                            .map(message -> new ChatLogDTO(message.getContent(), message.getSender()));
+                    return Mono.just(Tuples.of(roomId, chatLogs));
+                });
     }
 }
