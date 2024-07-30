@@ -6,6 +6,8 @@ import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 public interface ChatService {
     Mono<ChatMessageDTO> saveMessage(ChatMessageDTO message);
     Flux<ChatMessage> getRecentMessages(String roomId);
@@ -14,6 +16,7 @@ public interface ChatService {
     Mono<String> getChatbotResponse(String prompt);
     Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content);
     Flux<TranslateLog> getRecentTranslatedMessages(String roomId);
+    Mono<String> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages);
 
 
     }

@@ -33,32 +33,24 @@ public class ChatController {
                 .flatMapMany(language -> chatService.translateToKorean(question)
                         .flatMapMany(koreanQuestion -> chatService.getRecentTranslatedMessages(roomId)
                                 .collectList()
-                                .flatMapMany(recentMessages -> {
-                                    String prompt = createPrompt(koreanQuestion, recentMessages);
-                                    return chatService.getChatbotResponse(prompt)
-                                            .flatMapMany(response -> {
-                                                Mono<String> translatedResponse = chatService.translateFromKorean(response, language);
-                                                return translatedResponse.flatMapMany(userResponse -> {
-                                                    chatService.saveTranslatedMessage(roomId, "user", koreanQuestion).subscribe();
-                                                    chatService.saveTranslatedMessage(roomId, "bot", response).subscribe();
-                                                    ChatMessageDTO userMessage = new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now());
-                                                    ChatMessageDTO botMessage = new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now());
-                                                    chatService.saveMessage(userMessage).subscribe();
-                                                    chatService.saveMessage(botMessage).subscribe();
-                                                    return Flux.just(userResponse);
-                                                });
-                                            });
-                                })
+                                .flatMapMany(recentMessages -> chatService.createPrompt(koreanQuestion, recentMessages)
+                                        .flatMapMany(prompt -> chatService.getChatbotResponse(prompt)
+                                                .flatMapMany(response -> {
+                                                    Mono<String> translatedResponse = chatService.translateFromKorean(response, language);
+                                                    return translatedResponse.flatMapMany(userResponse -> {
+                                                        chatService.saveTranslatedMessage(roomId, "user", koreanQuestion).subscribe();
+                                                        chatService.saveTranslatedMessage(roomId, "bot", response).subscribe();
+                                                        ChatMessageDTO userMessage = new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now());
+                                                        ChatMessageDTO botMessage = new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now());
+                                                        chatService.saveMessage(userMessage).subscribe();
+                                                        chatService.saveMessage(botMessage).subscribe();
+                                                        return Flux.just(userResponse);
+                                                    });
+                                                })
+                                        )
+                                )
                         )
                 );
     }
 
-    private String createPrompt(String koreanQuestion, List<TranslateLog> recentMessages) {
-        StringBuilder prompt = new StringBuilder();
-        for (TranslateLog message : recentMessages) {
-            prompt.append(message.getSender()).append(": ").append(message.getContent()).append("\n");
-        }
-        prompt.append("User: ").append(koreanQuestion);
-        return prompt.toString();
-    }
 }

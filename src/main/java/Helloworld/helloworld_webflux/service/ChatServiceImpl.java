@@ -103,4 +103,14 @@ public class ChatServiceImpl implements ChatService {
     public Flux<TranslateLog> getRecentTranslatedMessages(String roomId) {
         return translateLogRepository.findTop10ByRoomIdOrderByTimeDesc(roomId);
     }
+
+    @Override
+    public Mono<String> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages) {
+        StringBuilder prompt = new StringBuilder();
+        for (TranslateLog message : recentMessages) {
+            prompt.append(message.getSender()).append(": ").append(message.getContent()).append("\n");
+        }
+        prompt.append("User: ").append(koreanQuestion);
+        return Mono.just(prompt.toString());
+    }
 }
