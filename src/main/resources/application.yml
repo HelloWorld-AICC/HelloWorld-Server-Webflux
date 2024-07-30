@@ -1,0 +1,17 @@
+server:
+  port: 8082
+
+spring:
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: chatdb
+  r2dbc:
+    url: r2dbc:mysql://localhost:3307/summary
+    username: root
+    password: ${MY_PASSWORD}
+
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
