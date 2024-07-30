@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.ArrayList;
 
 @Table("users")
-@Getter
-@Setter
+@Builder
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class User extends BaseEntity{
