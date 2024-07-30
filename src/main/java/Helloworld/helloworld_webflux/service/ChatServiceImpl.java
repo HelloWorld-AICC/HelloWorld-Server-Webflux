@@ -2,7 +2,9 @@ package Helloworld.helloworld_webflux.service;
 
 import Helloworld.helloworld_webflux.converter.ChatMessageConverter;
 import Helloworld.helloworld_webflux.domain.ChatMessage;
+import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.repository.ChatMessageRepository;
+import Helloworld.helloworld_webflux.repository.TranslateLogRepository;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import Helloworld.helloworld_webflux.web.dto.GPTRequest;
 import Helloworld.helloworld_webflux.web.dto.GPTResponse;
@@ -13,12 +15,15 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
     private final ChatMessageRepository chatMessageRepository;
+    private final TranslateLogRepository translateLogRepository;
+
     private final WebClient webClient;
 
     @Value("${openai.api.key}")
@@ -81,5 +86,21 @@ public class ChatServiceImpl implements ChatService {
                 .retrieve()
                 .bodyToMono(GPTResponse.class)
                 .map(response -> response.getChoices().get(0).getMessage().getContent());
+    }
+    // 새로운 메서드: 한국어 번역된 대화 로그 저장
+    @Override
+    public Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content) {
+        TranslateLog log = new TranslateLog();
+        log.setRoomId(roomId);
+        log.setSender(sender);
+        log.setContent(content);
+        log.setTime(LocalDateTime.now());
+        return translateLogRepository.save(log);
+    }
+
+    // 새로운 메서드: 번역 로그에서 최근 대화 조회
+    @Override
+    public Flux<TranslateLog> getRecentTranslatedMessages(String roomId) {
+        return translateLogRepository.findTop10ByRoomIdOrderByTimeDesc(roomId);
     }
 }

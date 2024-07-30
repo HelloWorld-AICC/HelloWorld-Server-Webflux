@@ -1,6 +1,6 @@
 package Helloworld.helloworld_webflux.web.controller;
 
-import Helloworld.helloworld_webflux.domain.ChatMessage;
+import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.service.ChatService;
 import Helloworld.helloworld_webflux.service.UserService;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
@@ -31,26 +31,32 @@ public class ChatController {
                                     @RequestBody String question) {
         return userService.findLanguage(userId)
                 .flatMapMany(language -> chatService.translateToKorean(question)
-                        .flatMapMany(koreanQuestion -> chatService.getRecentMessages(roomId)
+                        .flatMapMany(koreanQuestion -> chatService.getRecentTranslatedMessages(roomId)
                                 .collectList()
                                 .flatMapMany(recentMessages -> {
                                     String prompt = createPrompt(koreanQuestion, recentMessages);
                                     return chatService.getChatbotResponse(prompt)
-                                            .flatMapMany(response -> chatService.translateFromKorean(response, language));
-                                })
-                                .doOnNext(response -> {
-                                    ChatMessageDTO userMessage = new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now());
-                                    ChatMessageDTO botMessage = new ChatMessageDTO(null, roomId, "bot", response, LocalDateTime.now());
-                                    chatService.saveMessage(userMessage).subscribe();
-                                    chatService.saveMessage(botMessage).subscribe();
+                                            .flatMapMany(response -> {
+                                                Mono<String> translatedResponse = chatService.translateFromKorean(response, language);
+                                                // 한국어 번역된 대화 로그와 사용자 언어의 대화 로그 모두 저장
+                                                return translatedResponse.flatMapMany(userResponse -> {
+                                                    chatService.saveTranslatedMessage(roomId, "user", koreanQuestion).subscribe();
+                                                    chatService.saveTranslatedMessage(roomId, "bot", response).subscribe();
+                                                    ChatMessageDTO userMessage = new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now());
+                                                    ChatMessageDTO botMessage = new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now());
+                                                    chatService.saveMessage(userMessage).subscribe();
+                                                    chatService.saveMessage(botMessage).subscribe();
+                                                    return Flux.just(userResponse);
+                                                });
+                                            });
                                 })
                         )
                 );
     }
 
-    private String createPrompt(String koreanQuestion, List<ChatMessage> recentMessages) {
+    private String createPrompt(String koreanQuestion, List<TranslateLog> recentMessages) {
         StringBuilder prompt = new StringBuilder();
-        for (ChatMessage message : recentMessages) {
+        for (TranslateLog message : recentMessages) {
             prompt.append(message.getSender()).append(": ").append(message.getContent()).append("\n");
         }
         prompt.append("User: ").append(koreanQuestion);
