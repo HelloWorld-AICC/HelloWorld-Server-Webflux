@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -44,7 +45,10 @@ public class ChatController {
                                                         ChatMessageDTO botMessage = new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now());
                                                         chatService.saveMessage(userMessage).subscribe();
                                                         chatService.saveMessage(botMessage).subscribe();
-                                                        return Flux.just(userResponse);
+
+                                                        return Flux.fromStream(userResponse.chars()
+                                                                .mapToObj(c -> String.valueOf((char) c)))
+                                                                .delayElements(Duration.ofMillis(50)); // 스트리밍 형식 & 순서 보장하기 위해 넣었음. 필요하면 더 줄여도 된다.
                                                     });
                                                 })
                                         )
