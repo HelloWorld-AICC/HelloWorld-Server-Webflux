@@ -1,6 +1,8 @@
 package Helloworld.helloworld_webflux.web.controller;
 
+import Helloworld.helloworld_webflux.service.RoomService;
 import Helloworld.helloworld_webflux.service.UserService;
+import Helloworld.helloworld_webflux.web.dto.RoomDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -17,6 +19,8 @@ import reactor.core.scheduler.Schedulers;
 @RequestMapping("/user")
 public class UserController {
     private final UserService userService;
+    private final RoomService roomService;
+
 
     @GetMapping("/")
     @Operation(summary = "언어 조회 API", description = "언어 조회 화면 test API입니다.")
@@ -29,5 +33,10 @@ public class UserController {
     })
     public Mono<String> getLanguage(@RequestHeader("user_id") Long userId){
         return userService.findLanguage(userId);
+    }
+
+    @GetMapping("/room-list")
+    public Flux<RoomDTO> getUserRooms(@RequestHeader("user_id") Long userId) {
+        return roomService.getUserRooms(userId);
     }
 }
