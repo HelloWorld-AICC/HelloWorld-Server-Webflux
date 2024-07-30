@@ -1,6 +1,5 @@
 package Helloworld.helloworld_webflux.web.controller;
 
-import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.service.ChatService;
 import Helloworld.helloworld_webflux.service.UserService;
 import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
@@ -13,7 +12,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
