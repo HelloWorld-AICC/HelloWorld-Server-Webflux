@@ -14,7 +14,7 @@ import reactor.core.scheduler.Schedulers;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/chat")
+@RequestMapping("/user")
 public class UserController {
     private final UserService userService;
 
