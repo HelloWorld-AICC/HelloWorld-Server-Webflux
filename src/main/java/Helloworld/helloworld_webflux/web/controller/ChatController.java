@@ -38,7 +38,6 @@ public class ChatController {
                                     return chatService.getChatbotResponse(prompt)
                                             .flatMapMany(response -> {
                                                 Mono<String> translatedResponse = chatService.translateFromKorean(response, language);
-                                                // 한국어 번역된 대화 로그와 사용자 언어의 대화 로그 모두 저장
                                                 return translatedResponse.flatMapMany(userResponse -> {
                                                     chatService.saveTranslatedMessage(roomId, "user", koreanQuestion).subscribe();
                                                     chatService.saveTranslatedMessage(roomId, "bot", response).subscribe();
