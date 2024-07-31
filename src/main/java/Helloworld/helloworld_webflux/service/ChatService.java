@@ -21,7 +21,7 @@ public interface ChatService {
     Flux<TranslateLog> getRecentTranslatedMessages(String roomId);
     Mono<String> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages);
     Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message);
-    Mono<Tuple2<String, Flux<ChatLogDTO>>> findRecentRoomAndLogs(Long userId);
+    Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(Long userId);
 
 
 

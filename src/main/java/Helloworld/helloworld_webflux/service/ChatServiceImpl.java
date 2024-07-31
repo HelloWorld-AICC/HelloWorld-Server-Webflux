@@ -22,6 +22,7 @@ import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -140,13 +141,16 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public Mono<Tuple2<String, Flux<ChatLogDTO>>> findRecentRoomAndLogs(Long userId) {
-        return roomRepository.findTopByUserIdOrderByUpdatedAtDesc(userId)
-                .flatMap(room -> {
-                    String roomId = room.getId();
-                    Flux<ChatLogDTO> chatLogs = chatMessageRepository.findByRoomIdOrderByTimeAsc(roomId)
-                            .map(message -> new ChatLogDTO(message.getContent(), message.getSender()));
-                    return Mono.just(Tuples.of(roomId, chatLogs));
-                });
+    public Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(Long userId) {
+        return roomRepository.findFirstByUserIdOrderByUpdatedAtDesc(userId)
+                .flatMap(room -> chatMessageRepository.findByRoomIdOrderByTimeAsc(room.getId())
+                        .collectList()
+                        .map(messages -> Tuples.of(room.getId(), messages.stream()
+                                .map(this::toChatLogDTO)
+                                .collect(Collectors.toList()))
+                        ));
+    }
+    private ChatLogDTO toChatLogDTO(ChatMessage message) {
+        return new ChatLogDTO(message.getSender(), message.getContent());
     }
 }
