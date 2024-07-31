@@ -10,7 +10,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/summary")
 public class SummaryController {
     private final SummaryService summaryService;
-
     @PostMapping
     public Mono<Void> makeSummary(@RequestHeader("user_id") Long userId,
                                   @RequestParam("roomId") String roomId) {
