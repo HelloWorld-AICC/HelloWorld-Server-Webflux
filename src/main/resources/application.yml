@@ -12,6 +12,8 @@ spring:
     username: root
     password: ${MY_PASSWORD}
 
+
+
 openai:
   api:
     key: ${OPENAI_API_KEY}

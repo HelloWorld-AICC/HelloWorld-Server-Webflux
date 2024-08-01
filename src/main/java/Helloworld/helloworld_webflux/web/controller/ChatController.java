@@ -43,17 +43,20 @@ public class ChatController {
                                                             .flatMapMany(response -> {
                                                                 Mono<String> translatedResponse = chatService.translateFromKorean(response, language);
                                                                 return translatedResponse.flatMapMany(userResponse -> {
-                                                                    chatService.saveTranslatedMessage(updatedRoomId, "user", koreanQuestion).subscribe();
-                                                                    chatService.saveTranslatedMessage(updatedRoomId, "bot", response).subscribe();
-                                                                    ChatMessageDTO userMessage = new ChatMessageDTO(null, updatedRoomId, "user", question, LocalDateTime.now());
-                                                                    ChatMessageDTO botMessage = new ChatMessageDTO(null, updatedRoomId, "bot", userResponse, LocalDateTime.now());
-                                                                    chatService.saveMessage(userMessage).subscribe();
-                                                                    chatService.saveMessage(botMessage).subscribe();
-
-                                                                    return Flux.fromStream(userResponse.chars()
-                                                                                    .mapToObj(c -> String.valueOf((char) c)))
-                                                                            .delayElements(Duration.ofMillis(50))
-                                                                            .concatWith(Flux.just("Room ID: " + updatedRoomId)); // 마지막에 Room ID 반환
+                                                                    return chatService.saveTranslatedMessage(updatedRoomId, "user", koreanQuestion)
+                                                                            .then(chatService.saveTranslatedMessage(updatedRoomId, "bot", response))
+                                                                            .then(Mono.defer(() -> {
+                                                                                ChatMessageDTO userMessage = new ChatMessageDTO(null, updatedRoomId, "user", question, LocalDateTime.now());
+                                                                                return chatService.saveMessage(userMessage);
+                                                                            }))
+                                                                            .then(Mono.defer(() -> {
+                                                                                ChatMessageDTO botMessage = new ChatMessageDTO(null, updatedRoomId, "bot", userResponse, LocalDateTime.now());
+                                                                                return chatService.saveMessage(botMessage);
+                                                                            }))
+                                                                            .thenMany(Flux.fromStream(userResponse.chars()
+                                                                                            .mapToObj(c -> String.valueOf((char) c)))
+                                                                                    .delayElements(Duration.ofMillis(25))
+                                                                                    .concatWith(Flux.just("Room ID: " + updatedRoomId)));
                                                                 });
                                                             })
                                                     )
@@ -62,6 +65,7 @@ public class ChatController {
                         )
                 );
     }
+
 
     @GetMapping("/recent-room")
     public Mono<RecentRoomDTO> getRecentRoomAndLogs(@RequestHeader("user_id") Long userId) {

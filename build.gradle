@@ -8,7 +8,7 @@ plugins {
 // Google jib 이용해서 docker push ->
 jib {
 	from {
-		image = "openjdk:alpine"
+		image = "openjdk:17.0.2-slim"
 	}
 	to {
 		image = "swlee1999/webflux"
