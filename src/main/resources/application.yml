@@ -4,16 +4,16 @@ server:
 spring:
   data:
     mongodb:
-      host: localhost
-      port: 27017
-      database: chatdb
+      uri: mongodb+srv://ghkdwngns:01087651083@sekssak.gfbqnde.mongodb.net/chatdb
   r2dbc:
-    url: r2dbc:mysql://localhost:3306/summary
-    username: root
+    url: r2dbc:mysql://sekssak.c36moaasm9qn.ap-northeast-2.rds.amazonaws.com:3306/summary
+    username: sekssak
     password: ${MY_PASSWORD}
-
-
 
 openai:
   api:
     key: ${OPENAI_API_KEY}
+
+
+#    jdbc:mysql://sekssak:c36moaasm9qn:ap-northeast-2:rds:amazonaws:com:3306:
+#    url: jdbc:mysql://sekssak.c36moaasm9qn.ap-northeast-2.rds.amazonaws.com:3306/summary
