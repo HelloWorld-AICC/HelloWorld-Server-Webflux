@@ -5,6 +5,8 @@ import Helloworld.helloworld_webflux.domain.Room;
 import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
+import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.core.util.Json;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -16,10 +18,10 @@ public interface ChatService {
     Flux<ChatMessage> getRecentMessages(String roomId);
     Mono<String> translateToKorean(String text);
     Mono<String> translateFromKorean(String text, String targetLanguage);
-    Mono<String> getChatbotResponse(String prompt);
+    Mono<String> getChatbotResponse(JsonNode prompt);
     Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content);
     Flux<TranslateLog> getRecentTranslatedMessages(String roomId);
-    Mono<String> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages);
+    Mono<JsonNode> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages);
     Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message);
     Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(Long userId);
 

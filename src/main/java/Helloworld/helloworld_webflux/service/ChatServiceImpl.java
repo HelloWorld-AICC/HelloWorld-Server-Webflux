@@ -11,8 +11,14 @@ import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import Helloworld.helloworld_webflux.web.dto.GPTRequest;
 import Helloworld.helloworld_webflux.web.dto.GPTResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.swagger.v3.core.util.Json;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -80,19 +86,16 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public Mono<String> getChatbotResponse(String prompt) {
-        GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a helpful assistant.");
-        GPTRequest.Message userMessage = new GPTRequest.Message("user", prompt);
-        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
-
-        return webClient.post()
-                .uri("https://api.openai.com/v1/chat/completions")
-                .header("Authorization", "Bearer " + openaiApiKey)
-                .header("Content-Type", "application/json")
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(GPTResponse.class)
-                .map(response -> response.getChoices().get(0).getMessage().getContent());
+    public Mono<String> getChatbotResponse(JsonNode prompt) {
+        // WebClient를 사용하여 JSON 요청을 보냅니다.
+        Mono<String> web= webClient.post()
+                .uri("http://13.125.249.111:5000/question") // Flask 서버 URI
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(prompt)  // JSON 형식으로 요청 본문 설정
+                .retrieve()  // 응답을 검색
+                .bodyToMono(String.class);  // 응답을 String으로 변환
+        System.out.println("fuck");
+        return web;
     }
 
     @Override
@@ -111,14 +114,35 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public Mono<String> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages) {
-        StringBuilder prompt = new StringBuilder();
+    public Mono<JsonNode> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode root = mapper.createObjectNode();
+        ArrayNode conversationArray = mapper.createArrayNode();
+
+        // 기존 대화 변환
         for (TranslateLog message : recentMessages) {
-            prompt.append(message.getSender()).append(": ").append(message.getContent()).append("\n");
+            ObjectNode messageNode = mapper.createObjectNode();
+            String speaker = message.getSender().equalsIgnoreCase("user") ? "human" : "system";
+            messageNode.put("speaker", speaker);
+            messageNode.put("utterance", message.getContent());
+            conversationArray.add(messageNode);
         }
-        prompt.append("User: ").append(koreanQuestion);
-        return Mono.just(prompt.toString());
+
+        // 현재 질문 추가
+        ObjectNode currentQuestionNode = mapper.createObjectNode();
+        currentQuestionNode.put("speaker", "human");
+        currentQuestionNode.put("utterance", koreanQuestion);
+        conversationArray.add(currentQuestionNode);
+
+        // 최종 JSON 구조에 추가
+        root.set("Conversation", conversationArray);
+
+        System.out.println(root.toString());
+        return Mono.just(root);
     }
+
+
+
 
     @Override
     public Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message) {
