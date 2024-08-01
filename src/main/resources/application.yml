@@ -8,7 +8,7 @@ spring:
       port: 27017
       database: chatdb
   r2dbc:
-    url: r2dbc:mysql://localhost:3306/summary
+    url: r2dbc:mysql://mysql:3306/summary
 #    url: r2dbc:mysql://host.docker.internal:3306/summary
     username: root
     password: ${MY_PASSWORD}
