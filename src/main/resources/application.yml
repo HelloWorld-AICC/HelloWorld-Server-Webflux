@@ -4,7 +4,8 @@ server:
 spring:
   data:
     mongodb:
-      uri: mongodb+srv://ghkdwngns:${MONGODB_PW}@sekssak.gfbqnde.mongodb.net/chatdb
+      uri: mongodb+srv://ghkdwngns:${MONGODB_PW}@sekssak.gfbqnde.mongodb.net/chatdb?retryWrites=true&w=majority&ssl=true
+
   r2dbc:
     url: r2dbc:mysql://helloworld-rds-mysql8.c36moaasm9qn.ap-northeast-2.rds.amazonaws.com:3306/summary
     username: sekssak
