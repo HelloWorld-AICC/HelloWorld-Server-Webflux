@@ -104,7 +104,7 @@ public class SummaryServiceImpl implements SummaryService {
         GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
 
         return webClient.post()
-                .uri("https://api.openai.com/v1/chat/completions")
+                .uri("https://helloworld452nvf0q6i-6d773819ce33316b.tec-s1.onthetaedgecloud.com/question")
                 .header("Authorization", "Bearer " + openaiApiKey)
                 .header("Content-Type", "application/json")
                 .bodyValue(request)
