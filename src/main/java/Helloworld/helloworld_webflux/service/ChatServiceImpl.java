@@ -89,7 +89,7 @@ public class ChatServiceImpl implements ChatService {
     public Mono<String> getChatbotResponse(JsonNode prompt) {
         // WebClient를 사용하여 JSON 요청을 보냅니다.
         Mono<String> web= webClient.post()
-                .uri("https://helloworldvxhx2oqaqy-a1cfefb46cd5fee5.tec-s1.onthetaedgecloud.com/question") // Flask 서버 URI
+                .uri("https://helloworldxsvhx9wfid-f81bc8f1a7f4b11e.tec-s1.onthetaedgecloud.com/question") // Flask 서버 URI
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(prompt)  // JSON 형식으로 요청 본문 설정
                 .retrieve()  // 응답을 검색
