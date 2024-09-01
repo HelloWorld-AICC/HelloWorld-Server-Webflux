@@ -1,6 +1,6 @@
 server:
   port: 8082
-
+  forward-headers-strategy: FRAMEWORK
 spring:
   data:
     mongodb:
