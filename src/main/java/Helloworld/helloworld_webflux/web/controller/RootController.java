@@ -17,7 +17,7 @@ public class RootController {
         return "I'm Healthy!!!";
     }
 
-    @GetMapping("/testapikey")
+    @GetMapping("/apikeytest")
     public Mono<String> ask() {
         return webClient.post()
                 .uri("/v1/chat/completions")  // OpenAI의 챗봇 API 엔드포인트
