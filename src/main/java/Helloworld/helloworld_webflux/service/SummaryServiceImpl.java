@@ -63,8 +63,21 @@ public class SummaryServiceImpl implements SummaryService {
         GPTRequest.Message userMessage = new GPTRequest.Message("user",
                 "Summarize the following conversation with a focus on clarity and conciseness. Provide the response in three distinct sections: " +
                         "1. Title (a short title under 30 characters), 2. Chat Summary (a concise summary of the conversation), and 3. Main Points (key takeaways or main points). " +
-                        "If any section is not applicable, explicitly state 'None'.\n\n" + logs +
-                        "\n\nFormat the response exactly as follows:\nTitle: [Title]\nChat Summary: [Summary]\nMain Points: [Main Points]");
+                        "Make sure to clearly label each section with 'Title:', 'Chat Summary:', and 'Main Points:'. " +
+                        "If any section is not applicable, explicitly state 'None'. " +
+                        "Always provide a 'Main Points' section, even if the points are not significant. If no main points exist, write 'None'." +
+                        "\n\n" + logs +
+                        "\n\nThe response must follow this exact format(you must not forget Main Points):\n" +
+                        "Title:  [Title]\n" +
+                        "Chat Summary:  [Summary]\n" +
+                        "Main Points:  [Main Points]\n\n" +
+                        "Here is example:\n" +
+                        "Title:  How to get E-9 visa\n" +
+                        "Chat Summary:  The user, who is from Australia, inquires about obtaining an E-9 visa for South Korea. The AI assistant explains that the E-9 visa is for foreign workers engaging in non-professional employment in South Korea and outlines the necessary procedures and requirements. The user must meet specific criteria, including a job offer from a Korean employer and passing medical and background checks.\n" +
+                        "Main Points:  1. E-9 visa is for non-professional employment in South Korea. 2. The user needs a job offer from a Korean employer. 3. Medical and background checks are required for visa approval.");
+
+
+
 
         GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
 
@@ -101,7 +114,7 @@ public class SummaryServiceImpl implements SummaryService {
     private Mono<String> translateToUserLanguage(String text, String targetLanguage) {
         GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a great translator.");
         GPTRequest.Message userMessage = new GPTRequest.Message("user", "Translate the following text to " + targetLanguage + " exactly: " + text);
-        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
+        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 2000);
 
         return webClient.post()
                 .uri("https://api.openai.com/v1/chat/completions")
