@@ -64,6 +64,7 @@ public class SummaryServiceImpl implements SummaryService {
                 "Summarize the following conversation with a focus on clarity and conciseness. Provide the response in three distinct sections: " +
                         "1. Title (a short title under 30 characters), 2. Chat Summary (a concise summary of the conversation), and 3. Main Points (key takeaways or main points). " +
                         "Make sure to clearly label each section with 'Title:', 'Chat Summary:', and 'Main Points:'. " +
+                        "And make sure the 'Main Points' section is concise and must be under 180 characters per point. It is literally 'Main Points' " +
                         "If any section is not applicable, explicitly state 'None'. " +
                         "Always provide a 'Main Points' section, even if the points are not significant. If no main points exist, write 'None'." +
                         "\n\n" + logs +
@@ -114,7 +115,7 @@ public class SummaryServiceImpl implements SummaryService {
     private Mono<String> translateToUserLanguage(String text, String targetLanguage) {
         GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a great translator.");
         GPTRequest.Message userMessage = new GPTRequest.Message("user", "Translate the following text to " + targetLanguage + " exactly: " + text);
-        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 2500);
+        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 3000);
 
         return webClient.post()
                 .uri("https://api.openai.com/v1/chat/completions")
