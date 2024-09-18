@@ -114,7 +114,7 @@ public class SummaryServiceImpl implements SummaryService {
     private Mono<String> translateToUserLanguage(String text, String targetLanguage) {
         GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a great translator.");
         GPTRequest.Message userMessage = new GPTRequest.Message("user", "Translate the following text to " + targetLanguage + " exactly: " + text);
-        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 2000);
+        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 2500);
 
         return webClient.post()
                 .uri("https://api.openai.com/v1/chat/completions")
