@@ -1,6 +1,8 @@
 package Helloworld.helloworld_webflux.web.controller;
 
+import Helloworld.helloworld_webflux.domain.Room;
 import Helloworld.helloworld_webflux.service.ChatService;
+import Helloworld.helloworld_webflux.service.RoomService;
 import Helloworld.helloworld_webflux.service.UserService;
 import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.RecentRoomDTO;
@@ -18,6 +20,7 @@ import java.util.List;
 public class ChatController {
     private final ChatService chatService;
     private final UserService userService;
+    private final RoomService roomService;
 
     @GetMapping("/language")
     public Mono<String> getLanguage(@RequestHeader("user_id") Long userId) {
@@ -42,4 +45,8 @@ public class ChatController {
                 });
     }
 
+    @GetMapping("/room-log")
+    public Mono<RecentRoomDTO> getRoomAndLogs(@RequestParam("roomId") String roomId) {
+        return roomService.findRoomLogs(roomId);
+    }
 }
