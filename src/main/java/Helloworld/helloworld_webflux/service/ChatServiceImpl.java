@@ -218,6 +218,6 @@ public class ChatServiceImpl implements ChatService {
                         ));
     }
     private ChatLogDTO toChatLogDTO(ChatMessage message) {
-        return new ChatLogDTO(message.getSender(), message.getContent());
+        return new ChatLogDTO(message.getContent(),message.getSender());
     }
 }
