@@ -6,7 +6,6 @@ import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import com.fasterxml.jackson.databind.JsonNode;
-import io.swagger.v3.core.util.Json;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -14,6 +13,8 @@ import reactor.util.function.Tuple2;
 import java.util.List;
 
 public interface ChatService {
+    Flux<String> chatAnswer(Long userId, String roomId, String question);
+
     Mono<ChatMessageDTO> saveMessage(ChatMessageDTO message);
     Flux<ChatMessage> getRecentMessages(String roomId);
     Mono<String> translateToKorean(String text);
