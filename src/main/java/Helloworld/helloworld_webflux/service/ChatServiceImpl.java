@@ -26,6 +26,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
+    private final UserService userService;
     private final ChatMessageRepository chatMessageRepository;
     private final TranslateLogRepository translateLogRepository;
     private final RoomRepository roomRepository;
@@ -41,6 +43,45 @@ public class ChatServiceImpl implements ChatService {
 
     @Value("${openai.api.key}")
     private String openaiApiKey;
+
+    @Override
+    public Flux<String> chatAnswer(Long userId, String roomId, String question) {
+        return userService.findLanguage(userId)
+                .flatMapMany(language -> translateToKorean(question)
+                        .flatMapMany(koreanQuestion -> createOrUpdateRoom(userId, roomId, question)
+                                .flatMapMany(room -> getRoomAndProcessMessages(room.getId(), question, koreanQuestion, language))
+                        )
+                );
+    }
+
+    private Flux<String> getRoomAndProcessMessages(String updatedRoomId, String question, String koreanQuestion, String language) {
+        return getRecentTranslatedMessages(updatedRoomId)
+                .collectList()
+                .flatMapMany(recentMessages -> createPrompt(koreanQuestion, recentMessages)
+                        .flatMapMany(prompt -> getChatbotResponse(prompt)
+                                .flatMapMany(response -> processResponse(updatedRoomId, question, koreanQuestion, response, language))
+                        )
+                );
+    }
+
+    private Flux<String> processResponse(String roomId, String question, String koreanQuestion, String botResponse, String language) {
+        return translateFromKorean(botResponse, language)
+                .flatMapMany(userResponse ->
+                        Flux.just(
+                                        Mono.defer(() -> saveTranslatedMessage(roomId, "user", koreanQuestion)),
+                                        Mono.defer(() -> saveTranslatedMessage(roomId, "bot", botResponse)),
+                                        Mono.defer(() -> saveMessage(new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now()))),
+                                        Mono.defer(() -> saveMessage(new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now())))
+                                ).concatMap(mono -> mono)
+                                .thenMany(Flux.fromStream(userResponse.chars()
+                                                .mapToObj(c -> String.valueOf((char) c)))
+                                        .delayElements(Duration.ofMillis(25))
+                                        .concatWith(Flux.just("Room ID: " + roomId))
+                                )
+                );
+    }
+
+
 
     @Override
     public Mono<ChatMessageDTO> saveMessage(ChatMessageDTO message) {
@@ -72,7 +113,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Mono<String> translateFromKorean(String text, String targetLanguage) {
         GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a translator.");
-        GPTRequest.Message userMessage = new GPTRequest.Message("user", "Exactly translate the following Korean text to " + targetLanguage + ": " + text);
+        GPTRequest.Message userMessage = new GPTRequest.Message("user", "you must use only"+targetLanguage+". Exactly translate the following text to " + targetLanguage + ": " + text);
         GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
 
         return webClient.post()
@@ -119,6 +160,12 @@ public class ChatServiceImpl implements ChatService {
         ObjectNode root = mapper.createObjectNode();
         ArrayNode conversationArray = mapper.createArrayNode();
 
+        // 현재 질문 추가
+        ObjectNode currentQuestionNode = mapper.createObjectNode();
+        currentQuestionNode.put("speaker", "human");
+        currentQuestionNode.put("utterance", koreanQuestion);
+        conversationArray.add(currentQuestionNode);
+
         // 기존 대화 변환
         for (TranslateLog message : recentMessages) {
             ObjectNode messageNode = mapper.createObjectNode();
@@ -128,16 +175,12 @@ public class ChatServiceImpl implements ChatService {
             conversationArray.add(messageNode);
         }
 
-        // 현재 질문 추가
-        ObjectNode currentQuestionNode = mapper.createObjectNode();
-        currentQuestionNode.put("speaker", "human");
-        currentQuestionNode.put("utterance", koreanQuestion);
-        conversationArray.add(currentQuestionNode);
 
         // 최종 JSON 구조에 추가
         root.set("Conversation", conversationArray);
 
         System.out.println(root.toString());
+
         return Mono.just(root);
     }
 
