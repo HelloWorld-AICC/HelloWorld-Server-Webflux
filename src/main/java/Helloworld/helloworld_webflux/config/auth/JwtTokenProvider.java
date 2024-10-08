@@ -13,7 +13,6 @@ import java.util.Base64;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-@PropertySource(value = {"/application.yml"})
 public class JwtTokenProvider {
     @Value("${spring.jwt.secret}")
     private String secretKey;
