@@ -6,6 +6,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface RoomService {
-    Flux<RoomDTO> getUserRooms(Long userId);
+    Flux<RoomDTO> getUserRooms(String gmail);
     Mono<RecentRoomDTO> findRoomLogs(String roomId);
 }

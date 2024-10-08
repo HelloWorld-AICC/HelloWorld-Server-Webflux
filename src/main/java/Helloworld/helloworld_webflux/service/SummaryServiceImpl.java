@@ -4,6 +4,7 @@ import Helloworld.helloworld_webflux.domain.Summary;
 import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.repository.SummaryRepository;
 import Helloworld.helloworld_webflux.repository.TranslateLogRepository;
+import Helloworld.helloworld_webflux.repository.UserRepository;
 import Helloworld.helloworld_webflux.web.dto.GPTRequest;
 import Helloworld.helloworld_webflux.web.dto.GPTResponse;
 import Helloworld.helloworld_webflux.web.dto.SummaryDTO;
@@ -23,39 +24,42 @@ public class SummaryServiceImpl implements SummaryService {
     private final SummaryRepository summaryRepository;
     private final WebClient webClient;
     private final UserService userService;
+    private final UserRepository userRepository;
 
     @Value("${openai.api.key}")
     private String openaiApiKey;
 
     @Override
-    public Mono<Void> generateSummary(Long userId, String roomId) {
-        return translateLogRepository.findByRoomIdOrderByTimeAsc(roomId)
-                .collectList()
-                .flatMap(messages -> {
-                    String concatenatedLogs = messages.stream()
-                            .map(TranslateLog::getContent)
-                            .reduce((acc, log) -> acc + "\n" + log)
-                            .orElse("");
+    public Mono<Void> generateSummary(String gmail, String roomId) {
+        return userRepository.findByEmail(gmail).flatMap(user -> {
+            return translateLogRepository.findByRoomIdOrderByTimeAsc(roomId)
+                    .collectList()
+                    .flatMap(messages -> {
+                        String concatenatedLogs = messages.stream()
+                                .map(TranslateLog::getContent)
+                                .reduce((acc, log) -> acc + "\n" + log)
+                                .orElse("");
 
-                    return createSummary(concatenatedLogs);
-                })
-                .flatMap(summaryDTO -> userService.findLanguage(userId)
-                        .flatMap(language -> translateToUserLanguage(summaryDTO.getChatSummary(), language)
-                                .flatMap(translatedSummary -> {
-                                    Summary summary = Summary.builder()
-                                            .identificationNum(generateIdentificationNum())
-                                            .status("EMPTY")
-                                            .title(summaryDTO.getTitle())
-                                            .chatSummary(translatedSummary)
-                                            .mainPoint(summaryDTO.getMainPoint())
-                                            .userId(userId) // userId 대신 user 객체를 사용
-                                            .createdAt(LocalDateTime.now())
-                                            .updatedAt(LocalDateTime.now())
-                                            .build();
-                                    return summaryRepository.save(summary);
-                                }))
-                )
-                .then();
+                        return createSummary(concatenatedLogs);
+                    })
+                    .flatMap(summaryDTO -> userService.findLanguage(gmail)
+                            .flatMap(language -> translateToUserLanguage(summaryDTO.getChatSummary(), language)
+                                    .flatMap(translatedSummary -> {
+                                        Summary summary = Summary.builder()
+                                                .identificationNum(generateIdentificationNum())
+                                                .status("EMPTY")
+                                                .title(summaryDTO.getTitle())
+                                                .chatSummary(translatedSummary)
+                                                .mainPoint(summaryDTO.getMainPoint())
+                                                .userId(user.getId()) // userId 대신 user 객체를 사용
+                                                .createdAt(LocalDateTime.now())
+                                                .updatedAt(LocalDateTime.now())
+                                                .build();
+                                        return summaryRepository.save(summary);
+                                    }))
+                    )
+                    .then();
+        });
     }
 
     private Mono<SummaryDTO> createSummary(String logs) {

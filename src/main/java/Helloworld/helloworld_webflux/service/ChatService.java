@@ -13,7 +13,7 @@ import reactor.util.function.Tuple2;
 import java.util.List;
 
 public interface ChatService {
-    Flux<String> chatAnswer(Long userId, String roomId, String question);
+    Flux<String> chatAnswer(String gmail, String roomId, String question);
 
     Mono<ChatMessageDTO> saveMessage(ChatMessageDTO message);
     Flux<ChatMessage> getRecentMessages(String roomId);
@@ -23,8 +23,8 @@ public interface ChatService {
     Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content);
     Flux<TranslateLog> getRecentTranslatedMessages(String roomId);
     Mono<JsonNode> createPrompt(String koreanQuestion, List<TranslateLog> recentMessages);
-    Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message);
-    Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(Long userId);
+    Mono<Room> createOrUpdateRoom(String userId, String roomId, String message);
+    Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(String gmail);
 
 
 

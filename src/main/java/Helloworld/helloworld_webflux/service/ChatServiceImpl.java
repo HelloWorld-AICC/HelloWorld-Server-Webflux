@@ -7,6 +7,7 @@ import Helloworld.helloworld_webflux.domain.TranslateLog;
 import Helloworld.helloworld_webflux.repository.ChatMessageRepository;
 import Helloworld.helloworld_webflux.repository.RoomRepository;
 import Helloworld.helloworld_webflux.repository.TranslateLogRepository;
+import Helloworld.helloworld_webflux.repository.UserRepository;
 import Helloworld.helloworld_webflux.web.dto.ChatLogDTO;
 import Helloworld.helloworld_webflux.web.dto.ChatMessageDTO;
 import Helloworld.helloworld_webflux.web.dto.GPTRequest;
@@ -15,7 +16,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.swagger.v3.core.util.Json;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -40,15 +40,16 @@ public class ChatServiceImpl implements ChatService {
     private final RoomRepository roomRepository;
 
     private final WebClient webClient;
+    private final UserRepository userRepository;
 
     @Value("${openai.api.key}")
     private String openaiApiKey;
 
     @Override
-    public Flux<String> chatAnswer(Long userId, String roomId, String question) {
-        return userService.findLanguage(userId)
+    public Flux<String> chatAnswer(String gmail, String roomId, String question) {
+        return userService.findLanguage(gmail)
                 .flatMapMany(language -> translateToKorean(question)
-                        .flatMapMany(koreanQuestion -> createOrUpdateRoom(userId, roomId, question)
+                        .flatMapMany(koreanQuestion -> createOrUpdateRoom(gmail, roomId, question)
                                 .flatMapMany(room -> getRoomAndProcessMessages(room.getId(), question, koreanQuestion, language))
                         )
                 );
@@ -82,7 +83,6 @@ public class ChatServiceImpl implements ChatService {
     }
 
 
-
     @Override
     public Mono<ChatMessageDTO> saveMessage(ChatMessageDTO message) {
         ChatMessage entity = ChatMessageConverter.toEntity(message);
@@ -113,7 +113,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Mono<String> translateFromKorean(String text, String targetLanguage) {
         GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a translator.");
-        GPTRequest.Message userMessage = new GPTRequest.Message("user", "you must use only"+targetLanguage+". Exactly translate the following text to " + targetLanguage + ": " + text);
+        GPTRequest.Message userMessage = new GPTRequest.Message("user", "you must use only" + targetLanguage + ". Exactly translate the following text to " + targetLanguage + ": " + text);
         GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
 
         return webClient.post()
@@ -129,7 +129,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Mono<String> getChatbotResponse(JsonNode prompt) {
         // WebClient를 사용하여 JSON 요청을 보냅니다.
-        Mono<String> web= webClient.post()
+        Mono<String> web = webClient.post()
                 .uri("https://helloworld-func-app.azurewebsites.net/api/question") // Flask 서버 URI
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(prompt)  // JSON 형식으로 요청 본문 설정
@@ -185,39 +185,46 @@ public class ChatServiceImpl implements ChatService {
     }
 
 
-
-
     @Override
-    public Mono<Room> createOrUpdateRoom(Long userId, String roomId, String message) {
+    public Mono<Room> createOrUpdateRoom(String gmail, String roomId, String message) {
         // 만약 roomId가 "new_chat"인 경우 새 방 생성
         if ("new_chat".equals(roomId)) {
             String title = message.length() > 20 ? message.substring(0, 17) + "..." : message;
             Room room = new Room();
-            room.setUserId(userId);
-            room.setTitle(title);
-            room.setUpdatedAt(LocalDateTime.now());
-            return roomRepository.save(room);
+            return userRepository.findByEmail(gmail)
+                    .flatMap(user -> {
+                        room.setUserId(user.getId());
+                        room.setTitle(title);
+                        room.setUpdatedAt(LocalDateTime.now());
+                        return roomRepository.save(room);  // Room 엔티티 저장
+                    });
         } else {
             // 기존 방 업데이트
-            return roomRepository.findByUserIdAndId(userId, roomId)
-                    .flatMap(existingRoom -> {
-                        existingRoom.setUpdatedAt(LocalDateTime.now());
-                        return roomRepository.save(existingRoom);
-                    });
+            return userRepository.findByEmail(gmail).flatMap(user -> {
+                        return roomRepository.findByUserIdAndId(user.getId(), roomId)
+                                .flatMap(existingRoom -> {
+                                    existingRoom.setUpdatedAt(LocalDateTime.now());
+                                    return roomRepository.save(existingRoom);
+                                });
+                    }
+            );
         }
     }
 
     @Override
-    public Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(Long userId) {
-        return roomRepository.findFirstByUserIdOrderByUpdatedAtDesc(userId)
-                .flatMap(room -> chatMessageRepository.findByRoomIdOrderByTimeAsc(room.getId())
-                        .collectList()
-                        .map(messages -> Tuples.of(room.getId(), messages.stream()
-                                .map(this::toChatLogDTO)
-                                .collect(Collectors.toList()))
-                        ));
+    public Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(String gmail) {
+        return userRepository.findByEmail(gmail).flatMap(user -> {
+            return roomRepository.findFirstByUserIdOrderByUpdatedAtDesc(user.getId())
+                    .flatMap(room -> chatMessageRepository.findByRoomIdOrderByTimeAsc(room.getId())
+                            .collectList()
+                            .map(messages -> Tuples.of(room.getId(), messages.stream()
+                                    .map(this::toChatLogDTO)
+                                    .collect(Collectors.toList()))
+                            ));
+        });
     }
+
     private ChatLogDTO toChatLogDTO(ChatMessage message) {
-        return new ChatLogDTO(message.getContent(),message.getSender());
+        return new ChatLogDTO(message.getContent(), message.getSender());
     }
 }

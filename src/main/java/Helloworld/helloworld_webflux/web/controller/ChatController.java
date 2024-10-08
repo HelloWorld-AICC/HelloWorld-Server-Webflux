@@ -1,5 +1,6 @@
 package Helloworld.helloworld_webflux.web.controller;
 
+import Helloworld.helloworld_webflux.config.auth.JwtTokenProvider;
 import Helloworld.helloworld_webflux.domain.Room;
 import Helloworld.helloworld_webflux.service.ChatService;
 import Helloworld.helloworld_webflux.service.RoomService;
@@ -21,23 +22,27 @@ public class ChatController {
     private final ChatService chatService;
     private final UserService userService;
     private final RoomService roomService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @GetMapping("/language")
-    public Mono<String> getLanguage(@RequestHeader("user_id") Long userId) {
-        return userService.findLanguage(userId);
+    public Mono<String> getLanguage(@RequestHeader("Authorization") String accessToken) {
+        String gmail = jwtTokenProvider.getGoogleEmail(accessToken);
+        return userService.findLanguage(gmail);
     }
 
     @PostMapping(value = "/ask", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> askQuestion(@RequestHeader("user_id") Long userId,
+    public Flux<String> askQuestion(@RequestHeader("Authorization") String accessToken,
                                     @RequestParam("roomId") String roomId,
                                     @RequestBody String question) {
-        return chatService.chatAnswer(userId, roomId, question);
+        String gmail = jwtTokenProvider.getGoogleEmail(accessToken);
+        return chatService.chatAnswer(gmail, roomId, question);
     }
 
 
     @GetMapping("/recent-room")
-    public Mono<RecentRoomDTO> getRecentRoomAndLogs(@RequestHeader("user_id") Long userId) {
-        return chatService.findRecentRoomAndLogs(userId)
+    public Mono<RecentRoomDTO> getRecentRoomAndLogs(@RequestHeader("Authorization") String accessToken) {
+        String gmail = jwtTokenProvider.getGoogleEmail(accessToken);
+        return chatService.findRecentRoomAndLogs(gmail)
                 .map(roomAndLogs -> {
                     String roomId = roomAndLogs.getT1();
                     List<ChatLogDTO> logs = roomAndLogs.getT2();
