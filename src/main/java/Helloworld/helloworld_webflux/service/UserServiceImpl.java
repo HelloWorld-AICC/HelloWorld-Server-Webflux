@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
-    public Mono<String> findLanguage(Long userId){
-        return userRepository.findLanguageByUserId(userId);
+    public Mono<String> findLanguage(String gmail){
+        return userRepository.findByEmail(gmail).flatMap(user -> userRepository.findLanguageByUserId(user.getId()));
     }
 }

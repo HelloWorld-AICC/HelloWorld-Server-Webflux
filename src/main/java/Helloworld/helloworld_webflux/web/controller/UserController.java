@@ -1,5 +1,6 @@
 package Helloworld.helloworld_webflux.web.controller;
 
+import Helloworld.helloworld_webflux.config.auth.JwtTokenProvider;
 import Helloworld.helloworld_webflux.service.RoomService;
 import Helloworld.helloworld_webflux.service.UserService;
 import Helloworld.helloworld_webflux.web.dto.RoomDTO;
@@ -20,6 +21,7 @@ import reactor.core.scheduler.Schedulers;
 public class UserController {
     private final UserService userService;
     private final RoomService roomService;
+    private final JwtTokenProvider jwtTokenProvider;
 
 
     @GetMapping("/")
@@ -31,12 +33,14 @@ public class UserController {
     @Parameters({
             @Parameter(name = "user_id", description = "RequestHeader - 로그인한 사용자 아이디(accessToken으로 변경 예정)"),
     })
-    public Mono<String> getLanguage(@RequestHeader("user_id") Long userId){
-        return userService.findLanguage(userId);
+    public Mono<String> getLanguage(@RequestHeader("Authorization") String accessToken){
+        String gmail = jwtTokenProvider.getGoogleEmail(accessToken);
+        return userService.findLanguage(gmail);
     }
 
     @GetMapping("/room-list")
-    public Flux<RoomDTO> getUserRooms(@RequestHeader("user_id") Long userId) {
-        return roomService.getUserRooms(userId);
+    public Flux<RoomDTO> getUserRooms(@RequestHeader("Authorization") String accessToken) {
+        String gmail = jwtTokenProvider.getGoogleEmail(accessToken);
+        return roomService.getUserRooms(gmail);
     }
 }
