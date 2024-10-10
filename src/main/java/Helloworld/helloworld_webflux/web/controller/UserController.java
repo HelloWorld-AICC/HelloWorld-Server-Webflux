@@ -31,7 +31,7 @@ public class UserController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "USER4001", description = "사용자를 찾을수 없습니다.")
     })
     @Parameters({
-            @Parameter(name = "user_id", description = "RequestHeader - 로그인한 사용자 아이디(accessToken으로 변경 예정)"),
+            @Parameter(name = "Authorization", description = "RequestHeader - 로그인한 사용자 토큰"),
     })
     public Mono<String> getLanguage(@RequestHeader("Authorization") String accessToken){
         String gmail = jwtTokenProvider.getGoogleEmail(accessToken);
