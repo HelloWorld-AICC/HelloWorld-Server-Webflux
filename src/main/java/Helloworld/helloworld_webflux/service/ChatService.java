@@ -26,6 +26,8 @@ public interface ChatService {
     Mono<Room> createOrUpdateRoom(String userId, String roomId, String message);
     Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(String gmail);
 
+    Mono<String> createTitleFromMessage(String message);
+
 
 
 }
