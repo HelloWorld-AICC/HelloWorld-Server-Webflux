@@ -189,15 +189,16 @@ public class ChatServiceImpl implements ChatService {
     public Mono<Room> createOrUpdateRoom(String gmail, String roomId, String message) {
         // 만약 roomId가 "new_chat"인 경우 새 방 생성
         if ("new_chat".equals(roomId)) {
-            String title = message.length() > 20 ? message.substring(0, 17) + "..." : message;
-            Room room = new Room();
-            return userRepository.findByEmail(gmail)
-                    .flatMap(user -> {
-                        room.setUserId(user.getId());
-                        room.setTitle(title);
-                        room.setUpdatedAt(LocalDateTime.now());
-                        return roomRepository.save(room);  // Room 엔티티 저장
-                    });
+            return createTitleFromMessage(message)
+                    .flatMap(title -> userRepository.findByEmail(gmail)
+                            .flatMap(user -> {
+                                Room room = new Room();
+                                room.setUserId(user.getId());
+                                room.setTitle(title);
+                                room.setUpdatedAt(LocalDateTime.now());
+                                return roomRepository.save(room);
+                            })
+                    );
         } else {
             // 기존 방 업데이트
             return userRepository.findByEmail(gmail).flatMap(user -> {
@@ -210,6 +211,37 @@ public class ChatServiceImpl implements ChatService {
             );
         }
     }
+
+    @Override
+    public Mono<String> createTitleFromMessage(String message) {
+        GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a helpful assistant who creates short chat titles.");
+        GPTRequest.Message userMessage = new GPTRequest.Message("user",
+                "Create a concise and meaningful title under 20 characters for the following user message:\n\n" +
+                        "\"" + message + "\"\n\n" +
+                        "Respond with only the title and nothing else. Make sure it's under 20 characters.");
+
+        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 100);
+
+        return webClient.post()
+                .uri("https://api.openai.com/v1/chat/completions")
+                .header("Authorization", "Bearer " + openaiApiKey)
+                .header("Content-Type", "application/json")
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(GPTResponse.class)
+                .map(response -> {
+                    String title = response.getChoices().get(0).getMessage().getContent().trim();
+
+                    // 양끝 쌍따옴표 제거 (있을 때만)
+                    if (title.startsWith("\"") && title.endsWith("\"")) {
+                        title = title.substring(1, title.length() - 1).trim();
+                    }
+
+                    // 길이 제한 (20자 초과 시 '...' 붙임)
+                    return title.length() > 20 ? title.substring(0, 17) + "..." : title;
+                });
+    }
+
 
     @Override
     public Mono<Tuple2<String, List<ChatLogDTO>>> findRecentRoomAndLogs(String gmail) {
