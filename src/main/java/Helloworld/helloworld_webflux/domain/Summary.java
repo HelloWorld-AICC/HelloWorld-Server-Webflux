@@ -29,6 +29,7 @@ public class Summary {
     private String chatSummary;
     private String mainPoint;
     private Long userId;
+    private String roomId;
     @Column("created_at")
     private LocalDateTime createdAt;
     @Column("update_at")
