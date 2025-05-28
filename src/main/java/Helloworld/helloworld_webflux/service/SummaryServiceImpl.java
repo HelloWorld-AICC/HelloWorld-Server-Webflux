@@ -54,6 +54,7 @@ public class SummaryServiceImpl implements SummaryService {
                                                 .userId(user.getId()) // userId 대신 user 객체를 사용
                                                 .createdAt(LocalDateTime.now())
                                                 .updatedAt(LocalDateTime.now())
+                                                .roomId(roomId)
                                                 .build();
                                         return summaryRepository.save(summary);
                                     }))
