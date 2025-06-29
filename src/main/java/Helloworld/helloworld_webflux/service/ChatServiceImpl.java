@@ -97,8 +97,13 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Mono<String> translateToKorean(String text) {
         GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a translator.");
-        GPTRequest.Message userMessage = new GPTRequest.Message("user", "Exactly Translate the following text to Korean: " + text);
-        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
+        GPTRequest.Message userMessage = new GPTRequest.Message("user",
+                "Translate the following text into Korean accurately and naturally. " +
+                        "Respond with only the translated Korean sentence. Do not include any explanations, labels, or formatting." +
+                        "Respond with **plain text only**:\n\n" +
+                        "Text: " + text);
+
+        GPTRequest request = new GPTRequest("gpt-4o-mini", List.of(systemMessage, userMessage), 1000);
 
         return webClient.post()
                 .uri("https://api.openai.com/v1/chat/completions")
@@ -113,8 +118,12 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Mono<String> translateFromKorean(String text, String targetLanguage) {
         GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a translator.");
-        GPTRequest.Message userMessage = new GPTRequest.Message("user", "you must use only" + targetLanguage + ". Exactly translate the following text to " + targetLanguage + ": " + text);
-        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 1000);
+        GPTRequest.Message userMessage = new GPTRequest.Message("user",
+                "Translate the following Korean text into " + targetLanguage + " accurately and naturally. " +
+                        "Respond with only the translated sentence in " + targetLanguage + ". Do not include any other text, explanation, or labels." +
+                        "Respond with **plain text only**:\n\n" +
+                        "Text: " + text);
+        GPTRequest request = new GPTRequest("gpt-4o-mini", List.of(systemMessage, userMessage), 1000);
 
         return webClient.post()
                 .uri("https://api.openai.com/v1/chat/completions")
@@ -220,7 +229,7 @@ public class ChatServiceImpl implements ChatService {
                         "\"" + message + "\"\n\n" +
                         "Respond with only the title and nothing else. Make sure it's under 20 characters.");
 
-        GPTRequest request = new GPTRequest("gpt-3.5-turbo", List.of(systemMessage, userMessage), 100);
+        GPTRequest request = new GPTRequest("gpt-4o-mini", List.of(systemMessage, userMessage), 100);
 
         return webClient.post()
                 .uri("https://api.openai.com/v1/chat/completions")
