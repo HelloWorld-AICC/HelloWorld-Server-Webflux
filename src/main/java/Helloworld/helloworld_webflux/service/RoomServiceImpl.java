@@ -1,5 +1,6 @@
 package Helloworld.helloworld_webflux.service;
 
+import Helloworld.helloworld_webflux.domain.Room;
 import Helloworld.helloworld_webflux.repository.ChatMessageRepository;
 import Helloworld.helloworld_webflux.repository.RoomRepository;
 import Helloworld.helloworld_webflux.repository.UserRepository;
@@ -10,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +25,8 @@ public class RoomServiceImpl implements RoomService {
     public Flux<RoomDTO> getUserRooms(String gmail) {
         return userRepository.findByEmail(gmail)
                 .flatMapMany(user -> roomRepository.findByUserId(user.getId())
-                .map(room -> new RoomDTO(room.getId(), room.getTitle())));
+                        .sort(Comparator.comparing(Room::getUpdatedAt).reversed())
+                        .map(room -> new RoomDTO(room.getId(), room.getTitle(),room.getUpdatedAt())));
     }
 
     @Override
