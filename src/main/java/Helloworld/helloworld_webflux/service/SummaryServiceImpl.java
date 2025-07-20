@@ -30,7 +30,7 @@ public class SummaryServiceImpl implements SummaryService {
     private String openaiApiKey;
 
     @Override
-    public Mono<Void> generateSummary(String gmail, String roomId) {
+    public Mono<String> generateSummary(String gmail, String roomId) {
         return userRepository.findByEmail(gmail).flatMap(user -> {
             return translateLogRepository.findByRoomIdOrderByTimeAsc(roomId)
                     .collectList()
@@ -59,7 +59,7 @@ public class SummaryServiceImpl implements SummaryService {
                                         return summaryRepository.save(summary);
                                     }))
                     )
-                    .then();
+                    .then(Mono.just("complete"));
         });
     }
 
