@@ -14,7 +14,7 @@ public class SummaryController {
     private final JwtTokenProvider jwtTokenProvider;
 
     @PostMapping
-    public Mono<Void> makeSummary(@RequestHeader("Authorization") String accessToken,
+    public Mono<String> makeSummary(@RequestHeader("Authorization") String accessToken,
                                   @RequestParam("roomId") String roomId) {
         String gmail = jwtTokenProvider.getGoogleEmail(accessToken);
         return summaryService.generateSummary(gmail, roomId);
