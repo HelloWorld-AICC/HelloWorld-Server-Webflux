@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -29,6 +30,7 @@ import reactor.util.function.Tuples;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -65,22 +67,49 @@ public class ChatServiceImpl implements ChatService {
                 );
     }
 
-    private Flux<String> processResponse(String roomId, String question, String koreanQuestion, String botResponse, String language) {
-        return translateFromKorean(botResponse, language)
-                .flatMapMany(userResponse ->
-                        Flux.just(
-                                        Mono.defer(() -> saveTranslatedMessage(roomId, "user", koreanQuestion)),
-                                        Mono.defer(() -> saveTranslatedMessage(roomId, "bot", botResponse)),
-                                        Mono.defer(() -> saveMessage(new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now()))),
-                                        Mono.defer(() -> saveMessage(new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now())))
-                                ).concatMap(mono -> mono)
-                                .thenMany(Flux.fromStream(userResponse.chars()
-                                                .mapToObj(c -> String.valueOf((char) c)))
-                                        .delayElements(Duration.ofMillis(25))
-                                        .concatWith(Flux.just("Room ID: " + roomId))
-                                )
-                );
-    }
+//    private Flux<String> processResponse(String roomId, String question, String koreanQuestion, String botResponse, String language) {
+//        return translateFromKorean(botResponse, language)
+//                .flatMapMany(userResponse ->
+//                        Flux.just(
+//                                        Mono.defer(() -> saveTranslatedMessage(roomId, "user", koreanQuestion)),
+//                                        Mono.defer(() -> saveTranslatedMessage(roomId, "bot", botResponse)),
+//                                        Mono.defer(() -> saveMessage(new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now()))),
+//                                        Mono.defer(() -> saveMessage(new ChatMessageDTO(null, roomId, "bot", userResponse, LocalDateTime.now())))
+//                                ).concatMap(mono -> mono)
+//                                .thenMany(Flux.fromStream(userResponse.chars()
+//                                                .mapToObj(c -> String.valueOf((char) c)))
+//                                        .delayElements(Duration.ofMillis(25))
+//                                        .concatWith(Flux.just("Room ID: " + roomId))
+//                                )
+//                );
+//    }
+private Flux<String> processResponse(String roomId, String question, String koreanQuestion, String botResponse, String language) {
+    Flux.merge(
+            saveTranslatedMessage(roomId, "user", koreanQuestion).then(),
+            saveTranslatedMessage(roomId, "bot", botResponse).then(),
+            saveMessage(new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now())).then()
+    ).subscribe(); // ← 즉시 비동기 실행
+
+    StringBuilder translatedBuffer = new StringBuilder();
+
+    Flux<String> translationStream = translateFromKorean(botResponse, language)
+            .doOnNext(chunk -> translatedBuffer.append(chunk))
+            .doOnSubscribe(s -> System.out.println("streaming 번역 시작 -> "))
+            .doOnError(e -> System.err.println("번역 stream 에러: " + e.getMessage()))
+            .doOnComplete(() -> {
+                String fullTranslated = translatedBuffer.toString();
+
+                saveMessage(new ChatMessageDTO(null, roomId, "bot", fullTranslated, LocalDateTime.now()))
+                        .doOnSuccess(v -> System.out.println("번역 저장 성공"))
+                        .doOnError(e -> System.err.println("번역 저장 실패 에러: " + e.getMessage()))
+                        .subscribe();
+            });
+
+    return translationStream.concatWith(Flux.just("\nRoom ID: " + roomId));
+}
+
+
+
 
 
     @Override
@@ -115,38 +144,95 @@ public class ChatServiceImpl implements ChatService {
                 .map(response -> response.getChoices().get(0).getMessage().getContent());
     }
 
-    @Override
-    public Mono<String> translateFromKorean(String text, String targetLanguage) {
-        GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a translator.");
-        GPTRequest.Message userMessage = new GPTRequest.Message("user",
-                "Translate the following Korean text into " + targetLanguage + " accurately and naturally. " +
-                        "Respond with only the translated sentence in " + targetLanguage + ". Do not include any other text, explanation, or labels." +
-                        "Respond with **plain text only**:\n\n" +
-                        "Text: " + text);
-        GPTRequest request = new GPTRequest("gpt-4o-mini", List.of(systemMessage, userMessage), 1000);
+//    @Override
+//    public Mono<String> translateFromKorean(String text, String targetLanguage) {
+//        GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a translator.");
+//        GPTRequest.Message userMessage = new GPTRequest.Message("user",
+//                "Translate the following Korean text into " + targetLanguage + " accurately and naturally. " +
+//                        "Respond with only the translated sentence in " + targetLanguage + ". Do not include any other text, explanation, or labels." +
+//                        "Respond with **plain text only**:\n\n" +
+//                        "Text: " + text);
+//        GPTRequest request = new GPTRequest("gpt-4o-mini", List.of(systemMessage, userMessage), 1000);
+//
+//        return webClient.post()
+//                .uri("https://api.openai.com/v1/chat/completions")
+//                .header("Authorization", "Bearer " + openaiApiKey)
+//                .header("Content-Type", "application/json")
+//                .bodyValue(request)
+//                .retrieve()
+//                .bodyToMono(GPTResponse.class)
+//                .map(response -> response.getChoices().get(0).getMessage().getContent());
+//    }
+@Override
+public Flux<String> translateFromKorean(String text, String targetLanguage) {
+    GPTRequest.Message systemMessage = new GPTRequest.Message("system", "You are a translator.");
+    GPTRequest.Message userMessage = new GPTRequest.Message("user",
+            "Translate the following Korean text into " + targetLanguage + " accurately and naturally. " +
+                    "Respond with only the translated sentence in " + targetLanguage + ". Do not include any other text, explanation, or labels." +
+                    "Respond with **plain text only**:\n\n" +
+                    "Text: " + text);
 
-        return webClient.post()
-                .uri("https://api.openai.com/v1/chat/completions")
-                .header("Authorization", "Bearer " + openaiApiKey)
-                .header("Content-Type", "application/json")
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(GPTResponse.class)
-                .map(response -> response.getChoices().get(0).getMessage().getContent());
-    }
+    Map<String, Object> requestBody = Map.of(
+            "model", "gpt-4o-mini",
+            "messages", List.of(
+                    Map.of("role", systemMessage.getRole(), "content", systemMessage.getContent()),
+                    Map.of("role", userMessage.getRole(), "content", userMessage.getContent())
+            ),
+            "stream", true
+    );
+
+    ObjectMapper mapper = new ObjectMapper();
+
+    return webClient.post()
+            .uri("https://api.openai.com/v1/chat/completions")
+            .header("Authorization", "Bearer " + openaiApiKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .bodyValue(requestBody)
+            .retrieve()
+            .bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class)
+            .map(dataBuffer -> {
+                byte[] bytes = new byte[dataBuffer.readableByteCount()];
+                dataBuffer.read(bytes);
+                DataBufferUtils.release(dataBuffer); // 안전하게 메모리 해제
+                return new String(bytes);
+            })
+
+            .flatMap(line -> Flux.fromArray(line.split("\n")))
+            .filter(line -> line.trim().startsWith("data: "))
+            .map(line -> line.trim().replaceFirst("data: ", ""))
+            .doOnNext(line -> System.out.println("🔹 Stream line: " + line))
+            .takeUntil(line -> line.equals("[DONE]"))
+            .filter(line -> !line.equals("[DONE]"))
+            .flatMap(line -> {
+                try {
+                    JsonNode node = mapper.readTree(line);
+                    JsonNode delta = node.at("/choices/0/delta/content");
+                    if (!delta.isMissingNode() && delta.isTextual()) {
+                        return Mono.just(delta.asText());
+                    }
+                    return Mono.empty();
+                } catch (Exception e) {
+                    return Mono.empty();
+                }
+            });
+}
+
+
+
 
     @Override
     public Mono<String> getChatbotResponse(JsonNode prompt) {
-        // WebClient를 사용하여 JSON 요청을 보냅니다.
-        Mono<String> web = webClient.post()
-                .uri("https://helloworld-func-app.azurewebsites.net/api/question") // Flask 서버 URI
+        return webClient.post()
+                .uri("https://helloworld-func-app.azurewebsites.net/api/question")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(prompt)  // JSON 형식으로 요청 본문 설정
-                .retrieve()  // 응답을 검색
-                .bodyToMono(String.class);  // 응답을 String으로 변환
-        System.out.println("fuck");
-        return web;
+                .bodyValue(prompt)
+                .retrieve()
+                .bodyToMono(String.class)
+                .doOnNext(resp -> System.out.println("AI 서버 응답: " + resp))
+                .doOnError(e -> System.err.println("AI 서버 에러: " + e.getMessage()));
     }
+
 
     @Override
     public Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content) {
