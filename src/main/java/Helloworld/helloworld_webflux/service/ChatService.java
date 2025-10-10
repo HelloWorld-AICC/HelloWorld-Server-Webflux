@@ -18,7 +18,9 @@ public interface ChatService {
     Mono<ChatMessageDTO> saveMessage(ChatMessageDTO message);
     Flux<ChatMessage> getRecentMessages(String roomId);
     Mono<String> translateToKorean(String text);
-    Mono<String> translateFromKorean(String text, String targetLanguage);
+//    Mono<String> translateFromKorean(String text, String targetLanguage);
+    Flux<String> translateFromKorean(String text, String targetLanguage);
+
     Mono<String> getChatbotResponse(JsonNode prompt);
     Mono<TranslateLog> saveTranslatedMessage(String roomId, String sender, String content);
     Flux<TranslateLog> getRecentTranslatedMessages(String roomId);
