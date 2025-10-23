@@ -84,28 +84,23 @@ public class ChatServiceImpl implements ChatService {
 //                );
 //    }
 private Flux<String> processResponse(String roomId, String question, String koreanQuestion, String botResponse, String language) {
+
     Flux.merge(
             saveTranslatedMessage(roomId, "user", koreanQuestion).then(),
             saveTranslatedMessage(roomId, "bot", botResponse).then(),
             saveMessage(new ChatMessageDTO(null, roomId, "user", question, LocalDateTime.now())).then()
-    ).subscribe(); // ← 즉시 비동기 실행
+    ).subscribe();
 
-    StringBuilder translatedBuffer = new StringBuilder();
-
-    Flux<String> translationStream = translateFromKorean(botResponse, language)
-            .doOnNext(chunk -> translatedBuffer.append(chunk))
-            .doOnSubscribe(s -> System.out.println("streaming 번역 시작 -> "))
-            .doOnError(e -> System.err.println("번역 stream 에러: " + e.getMessage()))
+    return translateFromKorean(botResponse, language)
             .doOnComplete(() -> {
-                String fullTranslated = translatedBuffer.toString();
-
-                saveMessage(new ChatMessageDTO(null, roomId, "bot", fullTranslated, LocalDateTime.now()))
-                        .doOnSuccess(v -> System.out.println("번역 저장 성공"))
-                        .doOnError(e -> System.err.println("번역 저장 실패 에러: " + e.getMessage()))
-                        .subscribe();
-            });
-
-    return translationStream.concatWith(Flux.just("\nRoom ID: " + roomId));
+                translateFromKorean(botResponse, language)
+                        .collectList()
+                        .map(list -> String.join("", list))
+                        .flatMap(fullTranslated ->
+                                saveMessage(new ChatMessageDTO(null, roomId, "bot", fullTranslated, LocalDateTime.now()))
+                        ).subscribe();
+            })
+            .concatWith(Flux.just("\nRoom ID: " + roomId));
 }
 
 
@@ -169,7 +164,7 @@ public Flux<String> translateFromKorean(String text, String targetLanguage) {
     GPTRequest.Message userMessage = new GPTRequest.Message("user",
             "Translate the following Korean text into " + targetLanguage + " accurately and naturally. " +
                     "Respond with only the translated sentence in " + targetLanguage + ". Do not include any other text, explanation, or labels." +
-                    "Respond with **plain text only**:\n\n" +
+                    "Respond with plain text only:\n\n" +
                     "Text: " + text);
 
     Map<String, Object> requestBody = Map.of(
@@ -187,28 +182,27 @@ public Flux<String> translateFromKorean(String text, String targetLanguage) {
             .uri("https://api.openai.com/v1/chat/completions")
             .header("Authorization", "Bearer " + openaiApiKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .accept(MediaType.APPLICATION_JSON)
+            .accept(MediaType.TEXT_EVENT_STREAM)
             .bodyValue(requestBody)
             .retrieve()
             .bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class)
             .map(dataBuffer -> {
                 byte[] bytes = new byte[dataBuffer.readableByteCount()];
                 dataBuffer.read(bytes);
-                DataBufferUtils.release(dataBuffer); // 안전하게 메모리 해제
-                return new String(bytes);
+                DataBufferUtils.release(dataBuffer);
+                String chunk = new String(bytes);
+                return chunk;
             })
-
             .flatMap(line -> Flux.fromArray(line.split("\n")))
-            .filter(line -> line.trim().startsWith("data: "))
-            .map(line -> line.trim().replaceFirst("data: ", ""))
-            .doOnNext(line -> System.out.println("🔹 Stream line: " + line))
+            .filter(line -> line.startsWith("data: "))
+            .map(line -> line.replaceFirst("data: ", ""))
             .takeUntil(line -> line.equals("[DONE]"))
             .filter(line -> !line.equals("[DONE]"))
             .flatMap(line -> {
                 try {
                     JsonNode node = mapper.readTree(line);
                     JsonNode delta = node.at("/choices/0/delta/content");
-                    if (!delta.isMissingNode() && delta.isTextual()) {
+                    if (delta.isTextual()) {
                         return Mono.just(delta.asText());
                     }
                     return Mono.empty();
@@ -217,6 +211,8 @@ public Flux<String> translateFromKorean(String text, String targetLanguage) {
                 }
             });
 }
+
+
 
 
 
