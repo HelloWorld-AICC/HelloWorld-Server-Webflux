@@ -1,5 +1,5 @@
 # jdk 17사용
-FROM openjdk:17
+FROM amazoncorretto:17
 # 컨테이너속 저장 위치
 WORKDIR /app
 # 빌드된 JAR 파일 경로, 복사할 위치
